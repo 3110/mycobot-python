@@ -16,9 +16,9 @@ SET_FREE_MODE = 0x13
 GET_ANGLES = 0x20
 SET_ANGLES = 0x22
 GET_COORDS = 0x23
-IS_MOVING = 0x2b
+IS_MOVING = 0x2B
 SET_SERVO_CALIBRATION = 0x54
-SET_LED = 0x6a
+SET_LED = 0x6A
 
 
 class IllegalReplyError(Exception):
@@ -28,19 +28,19 @@ class IllegalReplyError(Exception):
 class AbstractCommand(metaclass=ABCMeta):
     @staticmethod
     def parse_bool(data):
-        return struct.unpack('?', data)[0]
+        return struct.unpack("?", data)[0]
 
     @staticmethod
     def parse_int8(data):
-        return struct.unpack('b', data)[0]
+        return struct.unpack("b", data)[0]
 
     @staticmethod
     def parse_int16(data):
-        return struct.unpack('>h', data)[0]
+        return struct.unpack(">h", data)[0]
 
     @staticmethod
     def encode_int16(data):
-        return struct.pack('>h', data)
+        return struct.pack(">h", data)
 
     @abstractmethod
     def id(self):
@@ -88,7 +88,8 @@ class AbstractCommandWithReply(AbstractCommand):
         cmd_id = received[pos + 3]
         if cmd_id != self.id():
             raise IllegalReplyError(
-                "expected = 0x%02x, actual = 0x%02x" % (self.id(), cmd_id))
+                "expected = 0x%02x, actual = 0x%02x" % (self.id(), cmd_id)
+            )
         data_pos = pos + 4
         return self.parse_reply(received[data_pos:data_pos + data_len - 1])
 
@@ -111,7 +112,7 @@ class AbstractCommandWithJointReply(AbstractCommandWithReply):
     def parse_reply(self, data):
         parsed = []
         for pos in range(0, len(data), 2):
-            parsed.append(self.parse_value(data[pos:pos+2]))
+            parsed.append(self.parse_value(data[pos:pos + 2]))
         return parsed
 
 
@@ -220,7 +221,7 @@ COMMANDS = {
 }
 
 
-class MyCobot():
+class MyCobot:
     def __init__(self, port, baudrate=115200, timeout=0.1):
         self._serial = serial.Serial(port, baudrate, timeout=timeout)
 
@@ -269,7 +270,7 @@ class MyCobot():
     def _emit_command(self, cmd, data=None):
         data = cmd.prepare_data(data)
         b = self._get_bytes(cmd, data)
-        print('Sending:')
+        print("Sending:")
         print(b)
         self._serial.write(b)
         self._serial.flush()
@@ -283,11 +284,13 @@ class MyCobot():
         return None
 
     def _get_bytes(self, cmd, data):
-        return bytes([
-            FRAME_HEADER,
-            FRAME_HEADER,
-            len(data) + 2,
-            cmd.id(),
-            *data,
-            FRAME_FOOTER
-        ])
+        return bytes(
+            [
+                FRAME_HEADER,
+                FRAME_HEADER,
+                len(data) + 2,
+                cmd.id(),
+                *data,
+                FRAME_FOOTER,
+            ]
+        )
