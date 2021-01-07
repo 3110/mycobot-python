@@ -7,6 +7,7 @@ parser.add_argument("-p", "--port", help="Serial Port")
 args = parser.parse_args()
 
 mycobot = MyCobot(args.port)
+mycobot.power_on()
 mycobot.set_led("00f000")
 mycobot.set_angles([0, 0, 0, 0, 0, 0], 50)
 time.sleep(5)
