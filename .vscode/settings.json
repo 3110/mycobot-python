@@ -1,0 +1,9 @@
+{
+    "python.pythonPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "cSpell.words": [
+        "cobot",
+        "mycobot",
+        "pymycobot",
+        "struct"
+    ]
+}
