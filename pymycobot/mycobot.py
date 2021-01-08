@@ -12,7 +12,7 @@ GET_SYSTEM_VERSION = 0x02
 POWER_ON = 0x10
 POWER_OFF = 0x11
 IS_POWERED_ON = 0x12
-SET_FREE_MODE = 0x13
+SET_FREE_MOVE = 0x13
 GET_ANGLES = 0x20
 SET_ANGLES = 0x22
 GET_COORDS = 0x23
@@ -146,9 +146,9 @@ class IsPoweredOn(AbstractCommandWithBoolReply):
         return IS_POWERED_ON
 
 
-class SetFreeMode(AbstractCommandWithoutReply):
+class SetFreeMove(AbstractCommandWithoutReply):
     def id(self):
-        return SET_FREE_MODE
+        return SET_FREE_MOVE
 
 
 class GetAngles(AbstractCommandWithJointReply):
@@ -211,7 +211,7 @@ COMMANDS = {
     POWER_ON: PowerOn(),
     POWER_OFF: PowerOff(),
     IS_POWERED_ON: IsPoweredOn(),
-    SET_FREE_MODE: SetFreeMode(),
+    SET_FREE_MOVE: SetFreeMove(),
     GET_ANGLES: GetAngles(),
     SET_ANGLES: SetAngles(),
     GET_COORDS: GetCoords(),
@@ -240,8 +240,8 @@ class MyCobot:
     def is_powered_on(self):
         return self._emit_command(COMMANDS[IS_POWERED_ON])
 
-    def set_free_mode(self):
-        return self._emit_command(COMMANDS[SET_FREE_MODE])
+    def set_free_move(self):
+        return self._emit_command(COMMANDS[SET_FREE_MOVE])
 
     def get_angles(self, is_radian=False):
         cmd = COMMANDS[GET_ANGLES]
