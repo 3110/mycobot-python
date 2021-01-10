@@ -67,7 +67,7 @@ class AbstractCommandWithReply(AbstractCommand):
         return data[pos] == FRAME_HEADER and data[pos + 1] == FRAME_HEADER
 
     @abstractmethod
-    def parse_reply(data):
+    def parse_reply(self, data):
         raise NotImplementedError()
 
     def has_reply(self):
@@ -91,7 +91,7 @@ class AbstractCommandWithReply(AbstractCommand):
                 "expected = 0x%02x, actual = 0x%02x" % (self.id(), cmd_id)
             )
         data_pos = pos + 4
-        return self.parse_reply(received[data_pos:data_pos + data_len - 1])
+        return self.parse_reply(received[data_pos : data_pos + data_len - 1])
 
     def prepare_data(self, data):
         if data is None:
@@ -112,7 +112,7 @@ class AbstractCommandWithJointReply(AbstractCommandWithReply):
     def parse_reply(self, data):
         parsed = []
         for pos in range(0, len(data), 2):
-            parsed.append(self.parse_value(data[pos:pos + 2]))
+            parsed.append(self.parse_value(data[pos : pos + 2]))
         return parsed
 
 
