@@ -15,7 +15,8 @@ IS_POWERED_ON = 0x12
 SET_FREE_MOVE = 0x13
 IS_CONTROLLER_CONNECTED = 0x14
 GET_ANGLES = 0x20
-SET_ANGLES = 0x22
+WRITE_ANGLE = 0x21
+WRITE_ANGLES = 0x22
 GET_COORDS = 0x23
 IS_MOVING = 0x2B
 SET_SERVO_CALIBRATION = 0x54
@@ -41,7 +42,15 @@ class AbstractCommand(metaclass=ABCMeta):
 
     @staticmethod
     def encode_int16(data):
-        return struct.pack(">h", data)
+        return list(struct.pack(">h", data))
+
+    @staticmethod
+    def _angle_to_int(v, is_radian=False):
+        return round(v * 1000 if is_radian else v * (314 / 18))
+
+    @staticmethod
+    def _int_to_angle(v, is_radian=False):
+        return v / 1000 if is_radian else v * (18 / 314)
 
     @abstractmethod
     def id(self):
@@ -165,25 +174,37 @@ class GetAngles(AbstractCommandWithJointReply):
         return GET_ANGLES
 
     def parse_value(self, v):
-        if self.is_radian:
-            return super().parse_value(v) / 1000
-        else:
-            return super().parse_value(v) * (18 / 314)
+        return self._int_to_angle(super().parse_value(v))
 
 
-class SetAngles(AbstractCommandWithoutReply):
+class WriteAngle(AbstractCommandWithoutReply):
     def __init__(self, is_radian=False):
         self.is_radian = is_radian
 
     def id(self):
-        return SET_ANGLES
+        return WRITE_ANGLE
+
+    def prepare_data(self, data):
+        data = super().prepare_data(data)
+        return [
+            data[0] - 1,
+            *self.encode_int16(self._angle_to_int(data[1], self.is_radian)),
+            data[2],
+        ]
+
+
+class WriteAngles(AbstractCommandWithoutReply):
+    def __init__(self, is_radian=False):
+        self.is_radian = is_radian
+
+    def id(self):
+        return WRITE_ANGLES
 
     def prepare_data(self, data):
         prepared = []
         data = super().prepare_data(data)
         for v in data[:-1]:
-            d = v * 1000 if self.is_radian else v * (314 / 18)
-            prepared.extend(list(self.encode_int16(round(d))))
+            prepared.extend(self._angle_to_int(v, self.is_radian))
         prepared.append(data[-1])  # speed
         return prepared
 
@@ -220,7 +241,8 @@ COMMANDS = {
     SET_FREE_MOVE: SetFreeMove(),
     IS_CONTROLLER_CONNECTED: IsControllerConnected(),
     GET_ANGLES: GetAngles(),
-    SET_ANGLES: SetAngles(),
+    WRITE_ANGLE: WriteAngle(),
+    WRITE_ANGLES: WriteAngles(),
     GET_COORDS: GetCoords(),
     IS_MOVING: IsMoving(),
     SET_SERVO_CALIBRATION: SetServoCalibration(),
@@ -258,9 +280,15 @@ class MyCobot:
         cmd.is_radian = is_radian
         return self._emit_command(cmd)
 
-    def set_angles(self, degrees, speed, is_radian=False):
-        data = [*degrees, speed]
-        cmd = COMMANDS[SET_ANGLES]
+    def set_angle(self, id, angle, speed, is_radian=False):
+        data = [id, angle, speed]
+        cmd = COMMANDS[WRITE_ANGLE]
+        cmd.is_radian = is_radian
+        return self._emit_command(cmd, data)
+
+    def set_angles(self, angles, speed, is_radian=False):
+        data = [*angles, speed]
+        cmd = COMMANDS[WRITE_ANGLES]
         cmd.is_radian = is_radian
         return self._emit_command(cmd, data)
 
