@@ -13,6 +13,7 @@ POWER_ON = 0x10
 POWER_OFF = 0x11
 IS_POWERED_ON = 0x12
 SET_FREE_MOVE = 0x13
+IS_CONTROLLER_CONNECTED = 0x14
 GET_ANGLES = 0x20
 SET_ANGLES = 0x22
 GET_COORDS = 0x23
@@ -151,6 +152,11 @@ class SetFreeMove(AbstractCommandWithoutReply):
         return SET_FREE_MOVE
 
 
+class IsControllerConnected(AbstractCommandWithBoolReply):
+    def id(self):
+        return IS_CONTROLLER_CONNECTED
+
+
 class GetAngles(AbstractCommandWithJointReply):
     def __init__(self, is_radian=False):
         self.is_radian = is_radian
@@ -212,6 +218,7 @@ COMMANDS = {
     POWER_OFF: PowerOff(),
     IS_POWERED_ON: IsPoweredOn(),
     SET_FREE_MOVE: SetFreeMove(),
+    IS_CONTROLLER_CONNECTED: IsControllerConnected(),
     GET_ANGLES: GetAngles(),
     SET_ANGLES: SetAngles(),
     GET_COORDS: GetCoords(),
@@ -242,6 +249,9 @@ class MyCobot:
 
     def set_free_move(self):
         return self._emit_command(COMMANDS[SET_FREE_MOVE])
+
+    def is_controller_connected(self):
+        return self._emit_command(COMMANDS[IS_CONTROLLER_CONNECTED])
 
     def get_angles(self, is_radian=False):
         cmd = COMMANDS[GET_ANGLES]
