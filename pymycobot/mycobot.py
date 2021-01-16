@@ -204,7 +204,9 @@ class WriteAngles(AbstractCommandWithoutReply):
         prepared = []
         data = super().prepare_data(data)
         for v in data[:-1]:
-            prepared.extend(self._angle_to_int(v, self.is_radian))
+            prepared.extend(
+                self.encode_int16(self._angle_to_int(v, self.is_radian))
+            )
         prepared.append(data[-1])  # speed
         return prepared
 
