@@ -119,7 +119,7 @@ class AbstractCommand(object):
 
     @staticmethod
     def encode_int16(data):
-        return struct.pack(">h", data)
+        return list(struct.pack(">h", data))
 
     @staticmethod
     def fromhex(v):
@@ -353,7 +353,7 @@ class WriteCoord(AbstractCommandWithoutReply):
     def prepare_data(self, data):
         return self.flatten(
             [
-                data[0],
+                data[0] - 1,
                 self.encode_int16(self._coord_to_int(data[1])),
                 data[2],
             ]
