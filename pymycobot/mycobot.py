@@ -342,7 +342,8 @@ class GetCoords(AbstractCommandWithInt16ListReply):
         super(GetCoords, self).__init__(Command.GET_COORDS, 0x0E)
 
     def parse_value(self, count, v):
-        return self._coord_to_int(super(GetCoords, self).parse_value(count, v))
+        v = super(GetCoords, self).parse_value(count, v)
+        return self._int_to_coord(v) if count < 3 else self._int_to_angle(v)
 
 
 class WriteCoord(AbstractCommandWithoutReply):
