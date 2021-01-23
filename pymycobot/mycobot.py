@@ -84,7 +84,7 @@ class FormatError(PyMyCobotError):
     def __init__(self, message, expected=None, actual=None):
         if expected and actual:
             message = f"{message}: expected={expected:#x}, actual={actual:#x}"
-        super().__init__(message)
+        super(FormatError, self).__init__(message)
 
 
 class IllegalCommandError(FormatError):
@@ -183,7 +183,7 @@ class AbstractCommandWithoutReply(AbstractCommand):
 
 class AbstractCommandWithReply(AbstractCommand):
     def __init__(self, id, reply_data_frame_length):
-        super().__init__(id)
+        super(AbstractCommandWithReply, self).__init__(id)
         self.reply_data_frame_length = reply_data_frame_length
 
     @abstractmethod
@@ -250,7 +250,9 @@ class AbstractCommandWithCoordsReply(AbstractCommandWithInt16ListReply):
 
     @abstractmethod
     def parse_value(self, count, v):
-        return self._int_to_coord(super().parse_value(count, v))
+        return self._int_to_coord(
+            super(AbstractCommandWithCoordsReply, self).parse_value(count, v)
+        )
 
 
 class AbstractCommandWithBoolReply(AbstractCommandWithReply):
