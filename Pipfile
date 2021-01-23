@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 pyserial = "*"
+six = "*"
 
 [dev-packages]
 flake8 = "*"

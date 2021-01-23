@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
+from collections import Iterable
 import enum
 import serial
+import six
 import struct
 import time
 
@@ -58,11 +60,51 @@ class Command(enum.IntEnum):
     SET_LED = 0x6A
 
 
-class IllegalReplyError(Exception):
+class Axis(enum.IntEnum):
+    X = 1
+    Y = 2
+    Z = 3
+    Rx = 4
+    Ry = 5
+    Rz = 6
+
+
+class CoordSystem(enum.IntEnum):
+    ANGULAR = 0
+    LINEAR = 1
+
+
+class PyMyCobotError(Exception):
+    """The base exception thrown from this library"""
+
     pass
 
 
-class AbstractCommand(metaclass=ABCMeta):
+class FormatError(PyMyCobotError):
+    def __init__(self, message, expected=None, actual=None):
+        if expected and actual:
+            message = f"{message}: expected={expected:#x}, actual={actual:#x}"
+        super().__init__(message)
+
+
+class IllegalCommandError(FormatError):
+    pass
+
+
+class IllegalReplyError(FormatError):
+    pass
+
+
+@six.add_metaclass(ABCMeta)
+class AbstractCommand(object):
+    @staticmethod
+    def is_frame_header(data, pos):
+        return data[pos] == Frame.HEADER and data[pos + 1] == Frame.HEADER
+
+    @staticmethod
+    def is_frame_footer(data, pos):
+        return data[pos] == Frame.FOOTER
+
     @staticmethod
     def parse_bool(data):
         return struct.unpack("?", data)[0]
@@ -77,196 +119,277 @@ class AbstractCommand(metaclass=ABCMeta):
 
     @staticmethod
     def encode_int16(data):
-        return list(struct.pack(">h", data))
+        return struct.pack(">h", data)
 
     @staticmethod
-    def _angle_to_int(v, is_radian=False):
-        return round(v * 1000 if is_radian else v * (314 / 18))
+    def fromhex(v):
+        return v.decode("hex") if six.PY2 else bytes.fromhex(v)
+
+    @staticmethod
+    def _angle_to_int(v):
+        return round(v * 100)
 
     @staticmethod
     def _int_to_angle(v, is_radian=False):
-        return v / 1000 if is_radian else v * (18 / 314)
+        return round(v / 100.0, 3)
 
-    @abstractmethod
-    def id(self):
-        raise NotImplementedError()
+    @staticmethod
+    def _coord_to_int(v):
+        return int(v * 10)
 
-    @abstractmethod
-    def has_reply(self):
-        raise NotImplementedError()
+    @staticmethod
+    def _int_to_coord(v):
+        return round(v / 10.0, 2)
+
+    @staticmethod
+    def _flatten(v):
+        return [
+            e
+            for d in v
+            for e in (
+                AbstractCommand._flatten(d)
+                if isinstance(d, Iterable)
+                and not isinstance(d, six.string_types)
+                else [d]
+            )
+        ]
+
+    def __init__(self, id):
+        self.id = id
 
     def prepare_data(self, data):
         if data is None:
             data = []
         return data
 
+    def get_bytes(self, data):
+        return bytes(
+            self._flatten(
+                [
+                    Frame.HEADER,
+                    Frame.HEADER,
+                    len(data) + 2,
+                    self.id,
+                    data,
+                    Frame.FOOTER,
+                ]
+            )
+        )
+
 
 class AbstractCommandWithoutReply(AbstractCommand):
-    def has_reply(self):
-        return False
+    pass
 
 
 class AbstractCommandWithReply(AbstractCommand):
-    @staticmethod
-    def is_frame_header(data, pos):
-        return data[pos] == Frame.HEADER and data[pos + 1] == Frame.HEADER
+    def __init__(self, id, reply_data_frame_length):
+        super().__init__(id)
+        self.reply_data_frame_length = reply_data_frame_length
 
     @abstractmethod
     def parse_reply(self, data):
         raise NotImplementedError()
-
-    def has_reply(self):
-        return True
 
     def parse(self, received):
         print("Received: ")
         print(received)
         n_recv = len(received)
         if n_recv == 0:
-            return
+            raise IllegalReplyError("No reply is found")
         for pos in range(n_recv - 1):
             if self.is_frame_header(received, pos):
+                pos += 2
                 break
         else:
             raise IllegalReplyError("Frame Header is not found")
-        data_len = received[pos + 2] - 1
-        cmd_id = received[pos + 3]
-        if cmd_id != self.id():
+        data_frame_len = received[pos]
+        if self.reply_data_frame_length != data_frame_len:
             raise IllegalReplyError(
-                "expected = 0x%02x, actual = 0x%02x" % (self.id(), cmd_id)
+                "Invalid data frame length",
+                self.reply_data_frame_length,
+                data_frame_len,
             )
-        data_pos = pos + 4
-        return self.parse_reply(received[data_pos : data_pos + data_len - 1])
-
-    def prepare_data(self, data):
-        if data is None:
-            data = []
-        return data
+        if n_recv - pos < data_frame_len or not self.is_frame_footer(
+            received, pos + data_frame_len
+        ):
+            raise IllegalReplyError(
+                "Invalid data frame", data_frame_len, n_recv - pos
+            )
+        reply_len = data_frame_len - 2  # except cmd and footer
+        cmd = received[pos + 1]
+        if cmd != self.id:
+            raise IllegalReplyError("Invalid Command", self.id, cmd)
+        return self.parse_reply(received[pos + 2 : pos + 2 + reply_len])
 
 
 class AbstractCommandWithInt8Reply(AbstractCommandWithReply):
+    def __init__(self, id):
+        super(AbstractCommandWithInt8Reply, self).__init__(id, 0x3)
+
     def parse_reply(self, data):
         return self.parse_int8(data)
 
 
-class AbstractCommandWithJointReply(AbstractCommandWithReply):
+class AbstractCommandWithInt16ListReply(AbstractCommandWithReply):
     @abstractmethod
-    def parse_value(self, v):
+    def parse_value(self, count, v):
         return self.parse_int16(v)
 
     def parse_reply(self, data):
         parsed = []
+        count = 0
         for pos in range(0, len(data), 2):
-            parsed.append(self.parse_value(data[pos : pos + 2]))
+            parsed.append(self.parse_value(count, data[pos : pos + 2]))
+            ++count
         return parsed
 
 
+class AbstractCommandWithCoordsReply(AbstractCommandWithInt16ListReply):
+    def __init__(self, id):
+        super(AbstractCommandWithCoordsReply, self).__init__(id, 0x10)
+
+    @abstractmethod
+    def parse_value(self, count, v):
+        return self._int_to_coord(super().parse_value(count, v))
+
+
 class AbstractCommandWithBoolReply(AbstractCommandWithReply):
+    def __init__(self, id):
+        super(AbstractCommandWithBoolReply, self).__init__(id, 0x03)
+
     def parse_reply(self, data):
         return self.parse_bool(data)
 
 
+# Command Implementations
 class GetRobotVersion(AbstractCommandWithInt8Reply):
-    def id(self):
-        return Command.GET_ROBOT_VERSION
+    def __init__(self):
+        super(GetRobotVersion, self).__init__(Command.GET_ROBOT_VERSION)
 
 
 class GetSystemVersion(AbstractCommandWithInt8Reply):
-    def id(self):
-        return Command.GET_SYSTEM_VERSION
+    def __init__(self):
+        super(GetSystemVersion, self).__init__(Command.GET_SYSTEM_VERSION)
 
 
 class PowerOn(AbstractCommandWithoutReply):
-    def id(self):
-        return Command.POWER_ON
+    def __init__(self):
+        super(PowerOn, self).__init__(Command.POWER_ON)
 
 
 class PowerOff(AbstractCommandWithoutReply):
-    def id(self):
-        return Command.POWER_OFF
+    def __init__(self):
+        super(PowerOff, self).__init__(Command.POWER_OFF)
 
 
 class IsPoweredOn(AbstractCommandWithBoolReply):
-    def id(self):
-        return Command.IS_POWERED_ON
+    def __init__(self):
+        super(IsPoweredOn, self).__init__(Command.IS_POWERED_ON)
 
 
 class SetFreeMove(AbstractCommandWithoutReply):
-    def id(self):
-        return Command.SET_FREE_MOVE
+    def __init__(self):
+        super(SetFreeMove, self).__init__(Command.SET_FREE_MOVE)
 
 
 class IsControllerConnected(AbstractCommandWithBoolReply):
-    def id(self):
-        return Command.IS_CONTROLLER_CONNECTED
+    def __init__(self):
+        super(IsControllerConnected, self).__init__(
+            Command.IS_CONTROLLER_CONNECTED
+        )
 
 
-class GetAngles(AbstractCommandWithJointReply):
-    def __init__(self, is_radian=False):
-        self.is_radian = is_radian
+class GetAngles(AbstractCommandWithInt16ListReply):
+    def __init__(self):
+        super(GetAngles, self).__init__(Command.GET_ANGLES, 0x0E)
 
-    def id(self):
-        return Command.GET_ANGLES
-
-    def parse_value(self, v):
-        return self._int_to_angle(super().parse_value(v))
+    def parse_value(self, count, v):
+        return self._int_to_angle(super(GetAngles, self).parse_value(count, v))
 
 
 class WriteAngle(AbstractCommandWithoutReply):
-    def __init__(self, is_radian=False):
-        self.is_radian = is_radian
-
-    def id(self):
-        return Command.WRITE_ANGLE
+    def __init__(self):
+        super(WriteAngle, self).__init__(Command.WRITE_ANGLE)
 
     def prepare_data(self, data):
-        data = super().prepare_data(data)
-        return [
-            data[0] - 1,
-            *self.encode_int16(self._angle_to_int(data[1], self.is_radian)),
-            data[2],
-        ]
+        data = super(WriteAngle, self).prepare_data(data)
+        return self._flatten(
+            [
+                data[0] - 1,
+                self.encode_int16(self._angle_to_int(data[1])),
+                data[2],
+            ]
+        )
 
 
 class WriteAngles(AbstractCommandWithoutReply):
-    def __init__(self, is_radian=False):
-        self.is_radian = is_radian
-
-    def id(self):
-        return Command.WRITE_ANGLES
+    def __init__(self):
+        super(WriteAngles, self).__init__(Command.WRITE_ANGLES)
 
     def prepare_data(self, data):
+        data = self._flatten(super(WriteAngles, self).prepare_data(data))
         prepared = []
-        data = super().prepare_data(data)
         for v in data[:-1]:
-            prepared.extend(
-                self.encode_int16(self._angle_to_int(v, self.is_radian))
-            )
+            prepared.extend(self.encode_int16(self._angle_to_int(v)))
         prepared.append(data[-1])  # speed
         return prepared
 
 
-class GetCoords(AbstractCommandWithJointReply):
-    def id(self):
-        return Command.GET_COORDS
+class GetCoords(AbstractCommandWithInt16ListReply):
+    def __init__(self):
+        super(GetCoords, self).__init__(Command.GET_COORDS, 0x0E)
 
-    def parse_value(self, v):
-        return super().parse_value(v) / 10
+    def parse_value(self, count, v):
+        return self._coord_to_int(super(GetCoords, self).parse_value(count, v))
+
+
+class WriteCoord(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(WriteCoord, self).__init__(Command.WRITE_COORD)
+
+    def prepare_data(self, data):
+        return self.flatten(
+            [
+                data[0],
+                self.encode_int16(self._coord_to_int(data[1])),
+                data[2],
+            ]
+        )
+
+
+class WriteCoords(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(WriteCoords, self).__init__(Command.WRITE_COORDS)
+
+    def prepare_data(self, data):
+        prepared = []
+        data = self._flatten(super(WriteCoords, self).prepare_data(data))
+        for v in data[:3]:  # x,y,z
+            prepared.extend(self.encode_int16(self._coord_to_int(v)))
+        for v in data[3:-2]:  # rx,ry,rz
+            prepared.extend(self.encode_int16(self._angle_to_int(v)))
+        prepared.extend(data[-2:])  # speed, mode
+        return prepared
 
 
 class SetServoCalibration(AbstractCommandWithoutReply):
-    def id(self):
-        return Command.SET_SERVO_CALIBRATION
+    def __init__(self):
+        super(SetServoCalibration, self).__init__(
+            Command.SET_SERVO_CALIBRATION
+        )
 
 
 class SetLED(AbstractCommandWithoutReply):
-    def id(self):
-        return Command.SET_LED
+    def __init__(self):
+        super(SetLED, self).__init__(Command.SET_LED)
+
+    def prepare_data(self, data):
+        return self.fromhex(data)
 
 
 class IsMoving(AbstractCommandWithBoolReply):
-    def id(self):
-        return Command.IS_MOVING
+    def __init__(self):
+        super(IsMoving, self).__init__(Command.IS_MOVING)
 
 
 COMMANDS = {
@@ -281,6 +404,8 @@ COMMANDS = {
     Command.WRITE_ANGLE: WriteAngle(),
     Command.WRITE_ANGLES: WriteAngles(),
     Command.GET_COORDS: GetCoords(),
+    Command.WRITE_COORD: WriteCoord(),
+    Command.WRITE_COORDS: WriteCoords(),
     Command.IS_MOVING: IsMoving(),
     Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
     Command.SET_LED: SetLED(),
@@ -313,63 +438,56 @@ class MyCobot:
         return self._emit_command(COMMANDS[Command.IS_CONTROLLER_CONNECTED])
 
     def get_angles(self, is_radian=False):
-        cmd = COMMANDS[Command.GET_ANGLES]
-        cmd.is_radian = is_radian
-        return self._emit_command(cmd)
+        return self._emit_command(COMMANDS[Command.GET_ANGLES])
 
-    def set_angle(self, id, angle, speed, is_radian=False):
-        data = [id, angle, speed]
-        cmd = COMMANDS[Command.WRITE_ANGLE]
-        cmd.is_radian = is_radian
-        return self._emit_command(cmd, data)
+    def set_angle(self, id, angle, speed):
+        return self._emit_command(
+            COMMANDS[Command.WRITE_ANGLE], [id, angle, speed]
+        )
 
-    def set_angles(self, angles, speed, is_radian=False):
-        data = [*angles, speed]
-        cmd = COMMANDS[Command.WRITE_ANGLES]
-        cmd.is_radian = is_radian
-        return self._emit_command(cmd, data)
+    def set_angles(self, angles, speed):
+        return self._emit_command(
+            COMMANDS[Command.WRITE_ANGLES], [angles, speed]
+        )
 
     def get_coords(self):
         return self._emit_command(COMMANDS[Command.GET_COORDS])
+
+    def set_coord(self, axis, coord, speed):
+        return self._emit_command(
+            COMMANDS[Command.WRITE_COORD], [axis, coord, speed]
+        )
+
+    def set_coords(self, coords, speed, mode):
+        return self._emit_command(
+            COMMANDS[Command.WRITE_COORDS], [coords, speed, mode]
+        )
 
     def is_moving(self):
         return self._emit_command(COMMANDS[Command.IS_MOVING])
 
     def set_servo_calibration(self, joint_no):
-        data = [joint_no - 1]
         return self._emit_command(
-            COMMANDS[Command.SET_SERVO_CALIBRATION], data
+            COMMANDS[Command.SET_SERVO_CALIBRATION], joint_no - 1
         )
 
     def set_led(self, rgb):
-        return self._emit_command(
-            COMMANDS[Command.SET_LED], bytes.fromhex(rgb)
-        )
+        return self._emit_command(COMMANDS[Command.SET_LED], rgb)
 
     def _emit_command(self, cmd, data=None):
         data = cmd.prepare_data(data)
-        b = self._get_bytes(cmd, data)
+        print("Prepared:")
+        print(data)
+        b = cmd.get_bytes(data)
         print("Sending:")
         print(b)
         self._serial.write(b)
         self._serial.flush()
         time.sleep(0.05)
-        if cmd.has_reply():
+        if isinstance(cmd, AbstractCommandWithReply):
             if self._serial.inWaiting() > 0:
                 received = self._serial.read(self._serial.inWaiting())
                 return cmd.parse(received)
             else:
                 raise IllegalReplyError("No reply is found")
         return None
-
-    def _get_bytes(self, cmd, data):
-        return bytes(
-            [
-                Frame.HEADER,
-                Frame.HEADER,
-                len(data) + 2,
-                cmd.id(),
-                *data,
-                Frame.FOOTER,
-            ]
-        )
