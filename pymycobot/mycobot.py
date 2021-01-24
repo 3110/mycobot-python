@@ -179,8 +179,8 @@ class AbstractCommand(object):
 
     def prepare_data(self, data):
         if data is None:
-            data = []
-        return data
+            data = ()
+        return self._flatten(data)
 
     def has_reply(self):
         return self.reply_data_len > 0
