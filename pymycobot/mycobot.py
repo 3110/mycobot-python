@@ -154,7 +154,7 @@ class AbstractCommand(object):
     @staticmethod
     def _int_to_angle(v):
         if ATOM_FIRMWARE_VERSION == "2.3":
-            return round(v * (180 / math.pi * 1000))
+            return round(v * (180 / (math.pi * 1000)))
         else:
             return round(v / 100.0, 3)
 
