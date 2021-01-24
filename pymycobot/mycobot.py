@@ -222,8 +222,8 @@ class AbstractCommandWithReply(AbstractCommand):
         raise NotImplementedError()
 
     def parse(self, received):
-        print("Received: ")
-        print(received)
+        # print("Received: ")
+        # print(received)
         n_recv = len(received)
         if n_recv == 0:
             raise IllegalReplyError("No reply is found")
@@ -539,11 +539,11 @@ class MyCobot:
 
     def _emit_command(self, cmd, *data):
         data = cmd.prepare_data(data)
-        print("Prepared:")
-        print(data)
+        # print("Prepared:")
+        # print(data)
         b = cmd.get_bytes(data)
-        print("Sending:")
-        print(b)
+        # print("Sending:")
+        # print(b)
         self._serial.write(b)
         self._serial.flush()
         time.sleep(0.05)
