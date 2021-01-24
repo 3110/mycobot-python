@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
 import enum
+import math
 import serial
 import six
 import struct
@@ -58,6 +59,15 @@ class Command(enum.IntEnum):
     GET_PIN_DATA = 0x62
     SET_GRIPPER_STATE = 0x66
     SET_LED = 0x6A
+
+
+class Angle(enum.Enum):
+    J1 = 1
+    J2 = 2
+    J3 = 3
+    J4 = 4
+    J5 = 5
+    J6 = 6
 
 
 class Axis(enum.IntEnum):
@@ -130,7 +140,7 @@ class AbstractCommand(object):
         return round(v * 100)
 
     @staticmethod
-    def _int_to_angle(v, is_radian=False):
+    def _int_to_angle(v):
         return round(v / 100.0, 3)
 
     @staticmethod
@@ -140,6 +150,14 @@ class AbstractCommand(object):
     @staticmethod
     def _int_to_coord(v):
         return round(v / 10.0, 2)
+
+    @staticmethod
+    def _int_to_radian(v):
+        return round(AbstractCommand._int_to_angle(v) * (math.pi / 180), 3)
+
+    @staticmethod
+    def _radian_to_int(v):
+        return AbstractCommand._angle_to_int(v * (180 / math.pi))
 
     @staticmethod
     def _flatten(v):
@@ -154,13 +172,17 @@ class AbstractCommand(object):
             )
         ]
 
-    def __init__(self, id):
+    def __init__(self, id, reply_data_len=0):
         self.id = id
+        self.reply_data_len = reply_data_len
 
     def prepare_data(self, data):
         if data is None:
             data = []
         return data
+
+    def has_reply(self):
+        return self.reply_data_len > 0
 
     def get_bytes(self, data):
         return bytes(
@@ -178,13 +200,13 @@ class AbstractCommand(object):
 
 
 class AbstractCommandWithoutReply(AbstractCommand):
-    pass
+    def __init__(self, id):
+        super(AbstractCommandWithoutReply, self).__init__(id, 0)
 
 
 class AbstractCommandWithReply(AbstractCommand):
-    def __init__(self, id, reply_data_frame_length):
-        super(AbstractCommandWithReply, self).__init__(id)
-        self.reply_data_frame_length = reply_data_frame_length
+    def __init__(self, id, reply_data_len):
+        super(AbstractCommandWithReply, self).__init__(id, reply_data_len)
 
     @abstractmethod
     def parse_reply(self, data):
@@ -224,7 +246,7 @@ class AbstractCommandWithReply(AbstractCommand):
 
 class AbstractCommandWithInt8Reply(AbstractCommandWithReply):
     def __init__(self, id):
-        super(AbstractCommandWithInt8Reply, self).__init__(id, 0x3)
+        super(AbstractCommandWithInt8Reply, self).__init__(id, 0x03)
 
     def parse_reply(self, data):
         return self.parse_int8(data)
@@ -302,11 +324,16 @@ class IsControllerConnected(AbstractCommandWithBoolReply):
 
 
 class GetAngles(AbstractCommandWithInt16ListReply):
-    def __init__(self):
+    def __init__(self, is_radian=False):
         super(GetAngles, self).__init__(Command.GET_ANGLES, 0x0E)
+        self.is_radian = is_radian
 
     def parse_value(self, count, v):
-        return self._int_to_angle(super(GetAngles, self).parse_value(count, v))
+        v = super(GetAngles, self).parse_value(count, v)
+        if self.is_radian:
+            return self._int_to_radian(v)
+        else:
+            return self._int_to_angle(v)
 
 
 class WriteAngle(AbstractCommandWithoutReply):
@@ -325,14 +352,18 @@ class WriteAngle(AbstractCommandWithoutReply):
 
 
 class WriteAngles(AbstractCommandWithoutReply):
-    def __init__(self):
+    def __init__(self, is_radian=False):
         super(WriteAngles, self).__init__(Command.WRITE_ANGLES)
+        self.is_radian = is_radian
 
     def prepare_data(self, data):
         data = self._flatten(super(WriteAngles, self).prepare_data(data))
         prepared = []
         for v in data[:-1]:
-            prepared.extend(self.encode_int16(self._angle_to_int(v)))
+            if self.is_radian:
+                prepared.extend(self.encode_int16(self._radian_to_int(v)))
+            else:
+                prepared.extend(self.encode_int16(self._angle_to_int(v)))
         prepared.append(data[-1])  # speed
         return prepared
 
@@ -387,7 +418,7 @@ class SetLED(AbstractCommandWithoutReply):
         super(SetLED, self).__init__(Command.SET_LED)
 
     def prepare_data(self, data):
-        return self.fromhex(data)
+        return self.fromhex(data[0])
 
 
 class IsMoving(AbstractCommandWithBoolReply):
@@ -440,17 +471,33 @@ class MyCobot:
     def is_controller_connected(self):
         return self._emit_command(COMMANDS[Command.IS_CONTROLLER_CONNECTED])
 
-    def get_angles(self, is_radian=False):
+    def get_angles(self):
+        cmd = COMMANDS[Command.GET_ANGLES]
+        cmd.is_radian = False
+        return self._emit_command(COMMANDS[Command.GET_ANGLES])
+
+    def get_radians(self):
+        cmd = COMMANDS[Command.GET_ANGLES]
+        cmd.is_radian = True
         return self._emit_command(COMMANDS[Command.GET_ANGLES])
 
     def set_angle(self, id, angle, speed):
         return self._emit_command(
-            COMMANDS[Command.WRITE_ANGLE], [id, angle, speed]
+            COMMANDS[Command.WRITE_ANGLE], id, angle, speed
         )
 
     def set_angles(self, angles, speed):
+        cmd = COMMANDS[Command.WRITE_ANGLES]
+        cmd.is_radian = False
         return self._emit_command(
-            COMMANDS[Command.WRITE_ANGLES], [angles, speed]
+            COMMANDS[Command.WRITE_ANGLES], angles, speed
+        )
+
+    def set_radians(self, angles, speed):
+        cmd = COMMANDS[Command.WRITE_ANGLES]
+        cmd.is_radian = True
+        return self._emit_command(
+            COMMANDS[Command.WRITE_ANGLES], angles, speed
         )
 
     def get_coords(self):
@@ -458,12 +505,12 @@ class MyCobot:
 
     def set_coord(self, axis, coord, speed):
         return self._emit_command(
-            COMMANDS[Command.WRITE_COORD], [axis, coord, speed]
+            COMMANDS[Command.WRITE_COORD], axis, coord, speed
         )
 
     def set_coords(self, coords, speed, mode):
         return self._emit_command(
-            COMMANDS[Command.WRITE_COORDS], [coords, speed, mode]
+            COMMANDS[Command.WRITE_COORDS], coords, speed, mode
         )
 
     def is_moving(self):
@@ -477,7 +524,7 @@ class MyCobot:
     def set_led(self, rgb):
         return self._emit_command(COMMANDS[Command.SET_LED], rgb)
 
-    def _emit_command(self, cmd, data=None):
+    def _emit_command(self, cmd, *data):
         data = cmd.prepare_data(data)
         print("Prepared:")
         print(data)
@@ -487,7 +534,7 @@ class MyCobot:
         self._serial.write(b)
         self._serial.flush()
         time.sleep(0.05)
-        if isinstance(cmd, AbstractCommandWithReply):
+        if cmd.has_reply():
             if self._serial.inWaiting() > 0:
                 received = self._serial.read(self._serial.inWaiting())
                 return cmd.parse(received)
