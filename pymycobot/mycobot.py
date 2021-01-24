@@ -234,10 +234,10 @@ class AbstractCommandWithReply(AbstractCommand):
         else:
             raise IllegalReplyError("Frame Header is not found")
         data_frame_len = received[pos]
-        if self.reply_data_frame_length != data_frame_len:
+        if self.reply_data_len != data_frame_len:
             raise IllegalReplyError(
                 "Invalid data frame length",
-                self.reply_data_frame_length,
+                self.reply_data_len,
                 data_frame_len,
             )
         if n_recv - pos < data_frame_len or not self.is_frame_footer(
