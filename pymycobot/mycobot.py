@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
-import enum
 import math
 import serial
 import six
@@ -8,12 +7,12 @@ import struct
 import time
 
 
-class Frame(enum.IntEnum):
+class Frame(object):
     HEADER = 0xFE
     FOOTER = 0xFA
 
 
-class Command(enum.IntEnum):
+class Command(object):
     GET_ROBOT_VERSION = 0x01
     GET_SYSTEM_VERSION = 0x02
     POWER_ON = 0x10
@@ -61,7 +60,7 @@ class Command(enum.IntEnum):
     SET_LED = 0x6A
 
 
-class Angle(enum.Enum):
+class Angle(object):
     J1 = 1
     J2 = 2
     J3 = 3
@@ -70,7 +69,7 @@ class Angle(enum.Enum):
     J6 = 6
 
 
-class Axis(enum.IntEnum):
+class Axis(object):
     X = 1
     Y = 2
     Z = 3
@@ -79,7 +78,7 @@ class Axis(enum.IntEnum):
     Rz = 6
 
 
-class CoordSystem(enum.IntEnum):
+class CoordSystem(object):
     ANGULAR = 0
     LINEAR = 1
 
@@ -93,7 +92,9 @@ class PyMyCobotError(Exception):
 class FormatError(PyMyCobotError):
     def __init__(self, message, expected=None, actual=None):
         if expected and actual:
-            message = f"{message}: expected={expected:#x}, actual={actual:#x}"
+            message = "{}: expected=0x{:02x}, actual=0x{:02x}".format(
+                message, expected, actual
+            )
         super(FormatError, self).__init__(message)
 
 
@@ -133,7 +134,7 @@ class AbstractCommand(object):
 
     @staticmethod
     def fromhex(v):
-        return v.decode("hex") if six.PY2 else bytes.fromhex(v)
+        return list(v.decode("hex") if six.PY2 else bytes.fromhex(v))
 
     @staticmethod
     def _angle_to_int(v):
@@ -185,18 +186,20 @@ class AbstractCommand(object):
         return self.reply_data_len > 0
 
     def get_bytes(self, data):
-        return bytes(
-            self._flatten(
-                [
-                    Frame.HEADER,
-                    Frame.HEADER,
-                    len(data) + 2,
-                    self.id,
-                    data,
-                    Frame.FOOTER,
-                ]
-            )
+        data = self._flatten(
+            [
+                Frame.HEADER,
+                Frame.HEADER,
+                len(data) + 2,
+                self.id,
+                data,
+                Frame.FOOTER,
+            ]
         )
+        if six.PY2:
+            return [ord(c) if type(c) == str else c for c in data]
+        else:
+            return bytes(data)
 
 
 class AbstractCommandWithoutReply(AbstractCommand):
