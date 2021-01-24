@@ -5,6 +5,7 @@
         "cobot",
         "mycobot",
         "pymycobot",
+        "pyserial",
         "struct",
         "venv"
     ]
