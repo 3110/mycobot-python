@@ -89,13 +89,19 @@ class PyMyCobotError(Exception):
     pass
 
 
+class CommandNotFoundError(PyMyCobotError):
+    def __init__(self, cmd_id):
+        msg = "Command ID: 0x{:02x}".format(cmd_id)
+        super(FormatError, self).__init__(msg)
+
+
 class FormatError(PyMyCobotError):
-    def __init__(self, message, expected=None, actual=None):
+    def __init__(self, msg, expected=None, actual=None):
         if expected and actual:
-            message = "{}: expected=0x{:02x}, actual=0x{:02x}".format(
-                message, expected, actual
+            msg = "{}: expected=0x{:02x}, actual=0x{:02x}".format(
+                msg, expected, actual
             )
-        super(FormatError, self).__init__(message)
+        super(FormatError, self).__init__(msg)
 
 
 class IllegalCommandError(FormatError):
@@ -429,103 +435,107 @@ class IsMoving(AbstractCommandWithBoolReply):
         super(IsMoving, self).__init__(Command.IS_MOVING)
 
 
-COMMANDS = {
-    Command.GET_ROBOT_VERSION: GetRobotVersion(),
-    Command.GET_SYSTEM_VERSION: GetSystemVersion(),
-    Command.POWER_ON: PowerOn(),
-    Command.POWER_OFF: PowerOff(),
-    Command.IS_POWERED_ON: IsPoweredOn(),
-    Command.SET_FREE_MOVE: SetFreeMove(),
-    Command.IS_CONTROLLER_CONNECTED: IsControllerConnected(),
-    Command.GET_ANGLES: GetAngles(),
-    Command.WRITE_ANGLE: WriteAngle(),
-    Command.WRITE_ANGLES: WriteAngles(),
-    Command.GET_COORDS: GetCoords(),
-    Command.WRITE_COORD: WriteCoord(),
-    Command.WRITE_COORDS: WriteCoords(),
-    Command.IS_MOVING: IsMoving(),
-    Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
-    Command.SET_LED: SetLED(),
-}
-
-
 class MyCobot:
+    COMMANDS = {
+        Command.GET_ROBOT_VERSION: GetRobotVersion(),
+        Command.GET_SYSTEM_VERSION: GetSystemVersion(),
+        Command.POWER_ON: PowerOn(),
+        Command.POWER_OFF: PowerOff(),
+        Command.IS_POWERED_ON: IsPoweredOn(),
+        Command.SET_FREE_MOVE: SetFreeMove(),
+        Command.IS_CONTROLLER_CONNECTED: IsControllerConnected(),
+        Command.GET_ANGLES: GetAngles(),
+        Command.WRITE_ANGLE: WriteAngle(),
+        Command.WRITE_ANGLES: WriteAngles(),
+        Command.GET_COORDS: GetCoords(),
+        Command.WRITE_COORD: WriteCoord(),
+        Command.WRITE_COORDS: WriteCoords(),
+        Command.IS_MOVING: IsMoving(),
+        Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
+        Command.SET_LED: SetLED(),
+    }
+
     def __init__(self, port, baudrate=115200, timeout=0.1):
         self._serial = serial.Serial(port, baudrate, timeout=timeout)
 
+    @classmethod
+    def get_command(cls, cmd_id):
+        if cmd_id in cls.COMMANDS:
+            return cls.COMMANDS[cmd_id]
+        else:
+            raise CommandNotFoundError(cmd_id)
+
     def get_robot_version(self):
-        return self._emit_command(COMMANDS[Command.GET_ROBOT_VERSION])
+        return self._emit_command(self.get_command(Command.GET_ROBOT_VERSION))
 
     def get_system_version(self):
-        return self._emit_command(COMMANDS[Command.GET_SYSTEM_VERSION])
+        return self._emit_command(self.get_command(Command.GET_SYSTEM_VERSION))
 
     def power_on(self):
-        return self._emit_command(COMMANDS[Command.POWER_ON])
+        return self._emit_command(self.get_command(Command.POWER_ON))
 
     def power_off(self):
-        return self._emit_command(COMMANDS[Command.POWER_OFF])
+        return self._emit_command(self.get_command(Command.POWER_OFF))
 
     def is_powered_on(self):
-        return self._emit_command(COMMANDS[Command.IS_POWERED_ON])
+        return self._emit_command(self.get_command(Command.IS_POWERED_ON))
 
     def set_free_move(self):
-        return self._emit_command(COMMANDS[Command.SET_FREE_MOVE])
+        return self._emit_command(self.get_command(Command.SET_FREE_MOVE))
 
     def is_controller_connected(self):
-        return self._emit_command(COMMANDS[Command.IS_CONTROLLER_CONNECTED])
+        return self._emit_command(
+            self.get_command(Command.IS_CONTROLLER_CONNECTED)
+        )
 
     def get_angles(self):
-        cmd = COMMANDS[Command.GET_ANGLES]
+        cmd = self.get_command(Command.GET_ANGLES)
         cmd.is_radian = False
-        return self._emit_command(COMMANDS[Command.GET_ANGLES])
+        return self._emit_command(cmd)
 
     def get_radians(self):
-        cmd = COMMANDS[Command.GET_ANGLES]
+        cmd = self.get_command(Command.GET_ANGLES)
         cmd.is_radian = True
-        return self._emit_command(COMMANDS[Command.GET_ANGLES])
+        return self._emit_command(cmd)
 
     def set_angle(self, id, angle, speed):
         return self._emit_command(
-            COMMANDS[Command.WRITE_ANGLE], id, angle, speed
+            self.get_command(Command.WRITE_ANGLE), id, angle, speed
         )
 
     def set_angles(self, angles, speed):
-        cmd = COMMANDS[Command.WRITE_ANGLES]
+        cmd = self.get_command(Command.WRITE_ANGLES)
         cmd.is_radian = False
-        return self._emit_command(
-            COMMANDS[Command.WRITE_ANGLES], angles, speed
-        )
+        return self._emit_command(cmd, angles, speed)
 
     def set_radians(self, angles, speed):
-        cmd = COMMANDS[Command.WRITE_ANGLES]
+        cmd = self.get_command(Command.WRITE_ANGLES)
         cmd.is_radian = True
-        return self._emit_command(
-            COMMANDS[Command.WRITE_ANGLES], angles, speed
-        )
+        return self._emit_command(cmd, angles, speed)
 
     def get_coords(self):
-        return self._emit_command(COMMANDS[Command.GET_COORDS])
+        return self._emit_command(self.get_command(Command.GET_COORDS))
 
     def set_coord(self, axis, coord, speed):
         return self._emit_command(
-            COMMANDS[Command.WRITE_COORD], axis, coord, speed
+            self.get_command(Command.WRITE_COORD), axis, coord, speed
         )
 
     def set_coords(self, coords, speed, mode):
         return self._emit_command(
-            COMMANDS[Command.WRITE_COORDS], coords, speed, mode
+            self.get_command(Command.WRITE_COORDS), coords, speed, mode
         )
 
     def is_moving(self):
-        return self._emit_command(COMMANDS[Command.IS_MOVING])
+        return self._emit_command(self.get_command(Command.IS_MOVING))
 
     def set_servo_calibration(self, joint_no):
         return self._emit_command(
-            COMMANDS[Command.SET_SERVO_CALIBRATION], joint_no - 1
+            self.get_command(Command.SET_SERVO_CALIBRATION), joint_no - 1
         )
 
     def set_led(self, rgb):
-        return self._emit_command(COMMANDS[Command.SET_LED], rgb)
+        return self._emit_command(self.get_command(Command.SET_LED), rgb)
 
     def _emit_command(self, cmd, *data):
         data = cmd.prepare_data(data)
