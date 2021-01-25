@@ -6,7 +6,7 @@ import six
 import struct
 import time
 
-ATOM_FIRMWARE_VERSION = "2.3"
+ATOM_FIRMWARE_VERSION = "2.4"
 
 
 class Frame(object):
