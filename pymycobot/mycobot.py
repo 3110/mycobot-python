@@ -85,6 +85,11 @@ class CoordSystem(object):
     LINEAR = 1
 
 
+class ClawState(object):
+    OPEN = 0
+    CLOSE = 1
+
+
 class PyMyCobotError(Exception):
     """The base exception thrown from this library"""
 
@@ -430,6 +435,11 @@ class SetServoCalibration(AbstractCommandWithoutReply):
         )
 
 
+class SetGripperState(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
+
+
 class SetLED(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetLED, self).__init__(Command.SET_LED)
@@ -460,6 +470,7 @@ class MyCobot:
         Command.WRITE_COORDS: WriteCoords(),
         Command.IS_MOVING: IsMoving(),
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
+        Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
     }
 
@@ -540,6 +551,11 @@ class MyCobot:
     def set_servo_calibration(self, joint_no):
         return self._emit_command(
             self.get_command(Command.SET_SERVO_CALIBRATION), joint_no - 1
+        )
+
+    def set_claw(self, state):
+        return self._emit_command(
+            self.get_command(Command.SET_GRIPPER_STATE), state
         )
 
     def set_led(self, rgb):
