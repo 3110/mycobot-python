@@ -453,6 +453,11 @@ class IsMoving(AbstractCommandWithBoolReply):
         super(IsMoving, self).__init__(Command.IS_MOVING)
 
 
+class IsAllServoEnable(AbstractCommandWithBoolReply):
+    def __init__(self):
+        super(IsAllServoEnable, self).__init__(Command.IS_ALL_SERVO_ENABLED)
+
+
 class MyCobot:
     COMMANDS = {
         Command.GET_ROBOT_VERSION: GetRobotVersion(),
@@ -469,6 +474,7 @@ class MyCobot:
         Command.WRITE_COORD: WriteCoord(),
         Command.WRITE_COORDS: WriteCoords(),
         Command.IS_MOVING: IsMoving(),
+        Command.IS_ALL_SERVO_ENABLED: IsAllServoEnable(),
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
@@ -547,6 +553,11 @@ class MyCobot:
 
     def is_moving(self):
         return self._emit_command(self.get_command(Command.IS_MOVING))
+
+    def is_all_servo_enable(self):
+        return self._emit_command(
+            self.get_command(Command.IS_ALL_SERVO_ENABLED)
+        )
 
     def set_servo_calibration(self, joint_no):
         return self._emit_command(
