@@ -433,6 +433,9 @@ class SetServoCalibration(AbstractCommandWithoutReply):
             Command.SET_SERVO_CALIBRATION
         )
 
+    def prepare_data(self, data):
+        return [data[0] - 1]
+
 
 class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
@@ -560,7 +563,7 @@ class MyCobot:
 
     def set_servo_calibration(self, joint_no):
         return self._emit_command(
-            self.get_command(Command.SET_SERVO_CALIBRATION), joint_no - 1
+            self.get_command(Command.SET_SERVO_CALIBRATION), joint_no
         )
 
     def set_claw(self, state):
