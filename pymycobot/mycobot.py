@@ -49,8 +49,7 @@ class Command(object):
     GET_JOINT_MAX = 0x4B
     SET_JOINT_MIN = 0x4C
     SET_JOINT_MAX = 0x4D
-    IS_SERVO_ENABLED = 0x50
-    IS_ALL_SERVO_ENABLED = 0x51
+    IS_ALL_SERVO_ENABLE = 0x51
     SET_SERVO_DATA = 0x52
     GET_SERVO_DATA = 0x53
     SET_SERVO_CALIBRATION = 0x54
@@ -455,7 +454,7 @@ class IsMoving(AbstractCommandWithBoolReply):
 
 class IsAllServoEnable(AbstractCommandWithBoolReply):
     def __init__(self):
-        super(IsAllServoEnable, self).__init__(Command.IS_ALL_SERVO_ENABLED)
+        super(IsAllServoEnable, self).__init__(Command.IS_ALL_SERVO_ENABLE)
 
 
 class MyCobot:
@@ -474,7 +473,7 @@ class MyCobot:
         Command.WRITE_COORD: WriteCoord(),
         Command.WRITE_COORDS: WriteCoords(),
         Command.IS_MOVING: IsMoving(),
-        Command.IS_ALL_SERVO_ENABLED: IsAllServoEnable(),
+        Command.IS_ALL_SERVO_ENABLE: IsAllServoEnable(),
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
@@ -556,7 +555,7 @@ class MyCobot:
 
     def is_all_servo_enable(self):
         return self._emit_command(
-            self.get_command(Command.IS_ALL_SERVO_ENABLED)
+            self.get_command(Command.IS_ALL_SERVO_ENABLE)
         )
 
     def set_servo_calibration(self, joint_no):
