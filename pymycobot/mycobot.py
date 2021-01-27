@@ -489,8 +489,9 @@ class MyCobot:
         Command.SET_LED: SetLED(),
     }
 
-    def __init__(self, port, baudrate=115200, timeout=0.1):
+    def __init__(self, port, baudrate=115200, timeout=0.1, debug=False):
         self._serial = serial.Serial(port, baudrate, timeout=timeout)
+        self.debug = debug
 
     @classmethod
     def get_command(cls, cmd_id):
@@ -588,18 +589,29 @@ class MyCobot:
 
     def _emit_command(self, cmd, *data):
         data = cmd.prepare_data(data)
-        # print("Prepared:")
-        # print(data)
+        # self._dump(data, "Prepared:")
         b = cmd.get_bytes(data)
-        # print("Sending:")
-        # print(b)
+        self._dump(b, "Sending:")
         self._serial.write(b)
         self._serial.flush()
         time.sleep(0.05)
         if cmd.has_reply():
             if self._serial.inWaiting() > 0:
                 received = self._serial.read(self._serial.inWaiting())
+                self._dump(received, "Received:")
                 return cmd.parse(received)
             else:
                 raise IllegalReplyError("No reply is found")
         return None
+
+    def _dump(self, data, header=None):
+        if not self.debug:
+            return
+        if header:
+            six.print_(header)
+        for i, v in enumerate(data, 1):
+            six.print_(r"\x%02x" % v, end=" ")
+            if i % 8 == 0:
+                six.print_()
+        if len(data) % 8 != 0:
+            six.print_()
