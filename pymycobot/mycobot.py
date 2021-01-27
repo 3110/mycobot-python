@@ -31,6 +31,7 @@ class Command(object):
     WRITE_COORDS = 0x25
     PROGRAM_PAUSE = 0x26
     IS_PROGRAM_PAUSED = 0x27
+    IS_IN_POSITION = 0x2A
     IS_MOVING = 0x2B
     TASK_STOP = 0x29
     JOG_ANGLE = 0x30
@@ -90,6 +91,11 @@ class ClawState(object):
     CLOSE = 1
 
 
+class PositionType(object):
+    Angle = 0
+    Coords = 1
+
+
 class PyMyCobotError(Exception):
     """The base exception thrown from this library"""
 
@@ -112,6 +118,10 @@ class FormatError(PyMyCobotError):
 
 
 class IllegalCommandError(FormatError):
+    pass
+
+
+class IllegalDataError(FormatError):
     pass
 
 
@@ -451,6 +461,34 @@ class SetLED(AbstractCommandWithoutReply):
         return self.fromhex(data[0])
 
 
+class IsInPosition(AbstractCommandWithBoolReply):
+    def __init__(self):
+        super(IsInPosition, self).__init__(Command.IS_IN_POSITION)
+
+    def prepare_data(self, data):
+        data = self._flatten(super(IsInPosition, self).prepare_data(data))
+        position_type = data.pop()
+        if position_type == PositionType.Angle:
+            return self._flatten(
+                [self.encode_int16(self._coord_to_int(v)) for v in data]
+            )
+        elif position_type == PositionType.Coords:
+            return self._flatten(
+                [
+                    self.encode_int16(
+                        self._coord_to_int(v)
+                        if i < 3
+                        else self._radian_to_int(v)
+                    )
+                    for i, v in enumerate(data)
+                ]
+            )
+        else:
+            raise IllegalDataError(
+                "Illegal Position Type: {}".format(self.position_type)
+            )
+
+
 class IsMoving(AbstractCommandWithBoolReply):
     def __init__(self):
         super(IsMoving, self).__init__(Command.IS_MOVING)
@@ -481,6 +519,7 @@ class MyCobot:
         Command.GET_COORDS: GetCoords(),
         Command.WRITE_COORD: WriteCoord(),
         Command.WRITE_COORDS: WriteCoords(),
+        Command.IS_IN_POSITION: IsInPosition(),
         Command.IS_MOVING: IsMoving(),
         Command.IS_SERVO_ENABLE: IsServoEnable(),
         Command.IS_ALL_SERVO_ENABLE: IsAllServoEnable(),
@@ -560,6 +599,11 @@ class MyCobot:
         return self._emit_command(
             self.get_command(Command.WRITE_COORDS), coords, speed, mode
         )
+
+    def is_in_position(self, positions, position_type):
+        cmd = self.get_command(Command.IS_IN_POSITION)
+        cmd.position_type = position_type
+        return self._emit_command(cmd, positions, position_type)
 
     def is_moving(self):
         return self._emit_command(self.get_command(Command.IS_MOVING))
