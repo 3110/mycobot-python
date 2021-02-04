@@ -56,6 +56,7 @@ class Command(object):
     GET_SERVO_DATA = 0x53
     SET_SERVO_CALIBRATION = 0x54
     VOID_JOINT_BRAKE = 0x55
+    FOCUS_SERVO = 0x57
     SET_PIN_MODE = 0x60
     SET_PIN_DATA = 0x61
     GET_PIN_DATA = 0x62
@@ -448,6 +449,11 @@ class SetServoCalibration(AbstractCommandWithoutReply):
         return [data[0] - 1]
 
 
+class FocusServo(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(FocusServo, self).__init__(Command.FOCUS_SERVO)
+
+
 class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
@@ -524,6 +530,7 @@ class MyCobot:
         Command.IS_SERVO_ENABLE: IsServoEnable(),
         Command.IS_ALL_SERVO_ENABLE: IsAllServoEnable(),
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
+        Command.FOCUS_SERVO: FocusServo(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
     }
@@ -621,6 +628,11 @@ class MyCobot:
     def set_servo_calibration(self, joint_no):
         return self._emit_command(
             self.get_command(Command.SET_SERVO_CALIBRATION), joint_no
+        )
+
+    def focus_servo(self, joint_no):
+        return self._emit_command(
+            self.get_command(Command.FOCUS_SERVO), joint_no
         )
 
     def set_claw(self, state):
