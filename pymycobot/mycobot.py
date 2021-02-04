@@ -98,6 +98,12 @@ class PositionType(object):
     Coords = 1
 
 
+class PinMode(object):
+    INPUT = 0
+    OUTPUT = 1
+    INPUT_PULLUP = 2
+
+
 class PyMyCobotError(Exception):
     """The base exception thrown from this library"""
 
@@ -460,6 +466,11 @@ class FocusServo(AbstractCommandWithoutReply):
         super(FocusServo, self).__init__(Command.FOCUS_SERVO)
 
 
+class SetPinMode(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(SetPinMode, self).__init__(Command.SET_PIN_MODE)
+
+
 class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
@@ -538,6 +549,7 @@ class MyCobot:
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
         Command.RELEASE_SERVO: ReleaseServo(),
         Command.FOCUS_SERVO: FocusServo(),
+        Command.SET_PIN_MODE: SetPinMode(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
     }
@@ -645,6 +657,11 @@ class MyCobot:
     def focus_servo(self, joint_no):
         return self._emit_command(
             self.get_command(Command.FOCUS_SERVO), joint_no
+        )
+
+    def set_pin_mode(self, pin_no, pin_mode):
+        return self._emit_command(
+            self.get_command(Command.SET_PIN_MODE), pin_no, pin_mode
         )
 
     def set_claw(self, state):
