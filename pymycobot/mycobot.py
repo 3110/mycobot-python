@@ -59,7 +59,7 @@ class Command(object):
     RELEASE_SERVO = 0x56
     FOCUS_SERVO = 0x57
     SET_PIN_MODE = 0x60
-    SET_PIN_DATA = 0x61
+    SET_DIGITAL_OUTPUT = 0x61
     GET_PIN_DATA = 0x62
     SET_GRIPPER_STATE = 0x66
     SET_LED = 0x6A
@@ -471,6 +471,11 @@ class SetPinMode(AbstractCommandWithoutReply):
         super(SetPinMode, self).__init__(Command.SET_PIN_MODE)
 
 
+class SetDigitalOutput(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(SetDigitalOutput, self).__init__(Command.SET_DIGITAL_OUTPUT)
+
+
 class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
@@ -550,6 +555,7 @@ class MyCobot:
         Command.RELEASE_SERVO: ReleaseServo(),
         Command.FOCUS_SERVO: FocusServo(),
         Command.SET_PIN_MODE: SetPinMode(),
+        Command.SET_DIGITAL_OUTPUT: SetDigitalOutput(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
     }
@@ -662,6 +668,11 @@ class MyCobot:
     def set_pin_mode(self, pin_no, pin_mode):
         return self._emit_command(
             self.get_command(Command.SET_PIN_MODE), pin_no, pin_mode
+        )
+
+    def set_digital_output(self, pin_no, pin_mode):
+        return self._emit_command(
+            self.get_command(Command.SET_DIGITAL_OUTPUT), pin_no, pin_mode
         )
 
     def set_claw(self, state):
