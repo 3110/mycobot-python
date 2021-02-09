@@ -88,7 +88,7 @@ class CoordSystem(object):
     LINEAR = 1
 
 
-class ClawState(object):
+class GripperState(object):
     OPEN = 0
     CLOSE = 1
 
@@ -686,9 +686,9 @@ class MyCobot:
             self.get_command(Command.GET_DIGITAL_INPUT), pin_no
         )
 
-    def set_claw(self, state):
+    def set_gripper_state(self, state, speed):
         return self._emit_command(
-            self.get_command(Command.SET_GRIPPER_STATE), state
+            self.get_command(Command.SET_GRIPPER_STATE), state, speed
         )
 
     def set_led(self, rgb):
