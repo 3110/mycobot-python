@@ -61,6 +61,7 @@ class Command(object):
     SET_PIN_MODE = 0x60
     SET_DIGITAL_OUTPUT = 0x61
     GET_DIGITAL_INPUT = 0x62
+    GET_GRIPPER_VALUE = 0x65
     SET_GRIPPER_STATE = 0x66
     SET_LED = 0x6A
 
@@ -479,6 +480,14 @@ class GetDigitalInput(AbstractCommandWithInt8Reply):
         super(GetDigitalInput, self).__init__(Command.GET_DIGITAL_INPUT)
 
 
+class GetGripperValue(AbstractCommandWithInt16ListReply):
+    def __init__(self):
+        super(GetGripperValue, self).__init__(Command.GET_GRIPPER_VALUE, 0x04)
+
+    def parse_reply(self, data):
+        return super(GetGripperValue, self).parse_reply(data)[0]
+
+
 class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
@@ -560,6 +569,7 @@ class MyCobot:
         Command.SET_PIN_MODE: SetPinMode(),
         Command.SET_DIGITAL_OUTPUT: SetDigitalOutput(),
         Command.GET_DIGITAL_INPUT: GetDigitalInput(),
+        Command.GET_GRIPPER_VALUE: GetGripperValue(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
     }
@@ -683,6 +693,9 @@ class MyCobot:
         return self._emit_command(
             self.get_command(Command.GET_DIGITAL_INPUT), pin_no
         )
+
+    def get_gripper_value(self):
+        return self._emit_command(self.get_command(Command.GET_GRIPPER_VALUE))
 
     def set_gripper_state(self, state, speed):
         return self._emit_command(
