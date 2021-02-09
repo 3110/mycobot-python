@@ -65,6 +65,7 @@ class Command(object):
     SET_GRIPPER_STATE = 0x66
     SET_GRIPPER_VALUE = 0x67
     SET_GRIPPER_INI = 0x68
+    IS_GRIPPER_MOVING = 0x69
     SET_LED = 0x6A
 
 
@@ -509,6 +510,11 @@ class SetGripperIni(AbstractCommandWithoutReply):
         super(SetGripperIni, self).__init__(Command.SET_GRIPPER_INI)
 
 
+class IsGripperMoving(AbstractCommandWithBoolReply):
+    def __init__(self):
+        super(IsGripperMoving, self).__init__(Command.IS_GRIPPER_MOVING)
+
+
 class SetLED(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetLED, self).__init__(Command.SET_LED)
@@ -589,6 +595,7 @@ class MyCobot:
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_GRIPPER_VALUE: SetGripperValue(),
         Command.SET_GRIPPER_INI: SetGripperIni(),
+        Command.IS_GRIPPER_MOVING: IsGripperMoving(),
         Command.SET_LED: SetLED(),
     }
 
@@ -727,6 +734,9 @@ class MyCobot:
 
     def set_gripper_ini(self):
         return self._emit_command(self.get_command(Command.SET_GRIPPER_INI))
+
+    def is_gripper_moving(self):
+        return self._emit_command(self.get_command(Command.IS_GRIPPER_MOVING))
 
     def set_led(self, rgb):
         return self._emit_command(self.get_command(Command.SET_LED), rgb)
