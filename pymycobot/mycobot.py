@@ -60,7 +60,7 @@ class Command(object):
     FOCUS_SERVO = 0x57
     SET_PIN_MODE = 0x60
     SET_DIGITAL_OUTPUT = 0x61
-    GET_PIN_DATA = 0x62
+    GET_DIGITAL_INPUT = 0x62
     SET_GRIPPER_STATE = 0x66
     SET_LED = 0x6A
 
@@ -476,6 +476,11 @@ class SetDigitalOutput(AbstractCommandWithoutReply):
         super(SetDigitalOutput, self).__init__(Command.SET_DIGITAL_OUTPUT)
 
 
+class GetDigitalInput(AbstractCommandWithInt8Reply):
+    def __init__(self):
+        super(GetDigitalInput, self).__init__(Command.GET_DIGITAL_INPUT)
+
+
 class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
@@ -556,6 +561,7 @@ class MyCobot:
         Command.FOCUS_SERVO: FocusServo(),
         Command.SET_PIN_MODE: SetPinMode(),
         Command.SET_DIGITAL_OUTPUT: SetDigitalOutput(),
+        Command.GET_DIGITAL_INPUT: GetDigitalInput(),
         Command.SET_GRIPPER_STATE: SetGripperState(),
         Command.SET_LED: SetLED(),
     }
@@ -673,6 +679,11 @@ class MyCobot:
     def set_digital_output(self, pin_no, pin_mode):
         return self._emit_command(
             self.get_command(Command.SET_DIGITAL_OUTPUT), pin_no, pin_mode
+        )
+
+    def get_digital_input(self, pin_no):
+        return self._emit_command(
+            self.get_command(Command.GET_DIGITAL_INPUT), pin_no
         )
 
     def set_claw(self, state):
