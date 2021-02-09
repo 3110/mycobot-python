@@ -293,7 +293,6 @@ class AbstractCommandWithInt8Reply(AbstractCommandWithReply):
 
 
 class AbstractCommandWithInt16ListReply(AbstractCommandWithReply):
-    @abstractmethod
     def parse_value(self, count, v):
         return self.parse_int16(v)
 
@@ -310,7 +309,6 @@ class AbstractCommandWithCoordsReply(AbstractCommandWithInt16ListReply):
     def __init__(self, id):
         super(AbstractCommandWithCoordsReply, self).__init__(id, 0x10)
 
-    @abstractmethod
     def parse_value(self, count, v):
         return self._int_to_coord(
             super(AbstractCommandWithCoordsReply, self).parse_value(count, v)
