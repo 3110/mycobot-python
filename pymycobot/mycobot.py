@@ -602,6 +602,7 @@ class MyCobot:
     def __init__(self, port, baudrate=115200, timeout=0.1, debug=False):
         self._serial = serial.Serial(port, baudrate, timeout=timeout)
         self.debug = debug
+        self._reset()
 
     @classmethod
     def get_command(cls, cmd_id):
@@ -788,3 +789,7 @@ class MyCobot:
             if row > 0:
                 row += 1
             self._dump_row(row, data[(-1 * remain) :])
+
+    def _reset(self):
+        while self._serial.inWaiting():
+            self._serial.read(self._serial.inWaiting())
