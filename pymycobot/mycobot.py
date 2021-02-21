@@ -495,6 +495,10 @@ class SetGripperState(AbstractCommandWithoutReply):
     def __init__(self):
         super(SetGripperState, self).__init__(Command.SET_GRIPPER_STATE)
 
+    def prepare_data(self, data):
+        data = self._flatten(super(SetGripperState, self).prepare_data(data))
+        return self._flatten([data[0], data[1]])
+
 
 class SetGripperValue(AbstractCommandWithoutReply):
     def __init__(self):
