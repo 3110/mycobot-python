@@ -6,7 +6,7 @@ import six
 import struct
 import time
 
-ATOM_FIRMWARE_VERSION = "2.4"
+DUMP_BYTES = 8
 
 
 class Frame(object):
@@ -758,14 +758,33 @@ class MyCobot:
                 raise IllegalReplyError("No reply is found")
         return None
 
+    def _dump_row(self, row, data):
+        six.print_("%02x:" % (row * DUMP_BYTES), end=" ")
+        n = len(data)
+        for i in range(DUMP_BYTES):
+            c = ("%02x" % data[i]) if i < n else "  "
+            six.print_(c, end=" ")
+        for i in range(DUMP_BYTES):
+            if i < n:
+                c = chr(data[i]) if 32 <= data[i] <= 127 else "."
+            else:
+                c = " "
+            six.print_(c, end="")
+        six.print_()
+
     def _dump(self, data, header=None):
         if not self.debug:
             return
         if header:
             six.print_(header)
-        for i, v in enumerate(data, 1):
-            six.print_(r"\x%02x" % v, end=" ")
-            if i % 8 == 0:
-                six.print_()
-        if len(data) % 8 != 0:
-            six.print_()
+        rows = len(data) // DUMP_BYTES
+        row = 0
+        for row in range(rows):
+            self._dump_row(
+                row, data[row * DUMP_BYTES : row * DUMP_BYTES + DUMP_BYTES]
+            )
+        remain = len(data) % DUMP_BYTES
+        if remain > 0:
+            if row > 0:
+                row += 1
+            self._dump_row(row, data[(-1 * remain) :])
