@@ -566,6 +566,11 @@ class JogAngle(AbstractCommandWithoutReply):
         super(JogAngle, self).__init__(Command.JOG_ANGLE)
 
 
+class JogCoord(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(JogCoord, self).__init__(Command.JOG_COORD)
+
+
 class IsServoEnable(AbstractCommandWithBoolReply):
     def __init__(self):
         super(IsServoEnable, self).__init__(Command.IS_SERVO_ENABLE)
@@ -592,8 +597,9 @@ class MyCobot:
         Command.WRITE_COORD: WriteCoord(),
         Command.WRITE_COORDS: WriteCoords(),
         Command.IS_IN_POSITION: IsInPosition(),
-        Command.JOG_ANGLE: JogAngle(),
         Command.IS_MOVING: IsMoving(),
+        Command.JOG_ANGLE: JogAngle(),
+        Command.JOG_COORD: JogCoord(),
         Command.IS_SERVO_ENABLE: IsServoEnable(),
         Command.IS_ALL_SERVO_ENABLE: IsAllServoEnable(),
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
@@ -694,6 +700,11 @@ class MyCobot:
     def jog_angle(self, joint_no, direction, speed):
         return self._emit_command(
             self.get_command(Command.JOG_ANGLE), joint_no, direction, speed
+        )
+
+    def jog_coord(self, coord_no, direction, speed):
+        return self._emit_command(
+            self.get_command(Command.JOG_COORD), coord_no, direction, speed
         )
 
     def is_servo_enable(self, joint_no):
