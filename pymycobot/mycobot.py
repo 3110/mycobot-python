@@ -39,6 +39,7 @@ class Command(object):
     JOG_ABSOLUTE = 0x31
     JOG_COORD = 0x32
     SEND_JOG_INCREMENT = 0x33
+    JOG_STOP = 0x34
     SET_ENCODER = 0x3A
     GET_ENCODER = 0x3B
     SET_ENCODERS = 0x3C
@@ -571,6 +572,11 @@ class JogCoord(AbstractCommandWithoutReply):
         super(JogCoord, self).__init__(Command.JOG_COORD)
 
 
+class JogStop(AbstractCommandWithoutReply):
+    def __init__(self):
+        super(JogStop, self).__init__(Command.JOG_STOP)
+
+
 class IsServoEnable(AbstractCommandWithBoolReply):
     def __init__(self):
         super(IsServoEnable, self).__init__(Command.IS_SERVO_ENABLE)
@@ -600,6 +606,7 @@ class MyCobot:
         Command.IS_MOVING: IsMoving(),
         Command.JOG_ANGLE: JogAngle(),
         Command.JOG_COORD: JogCoord(),
+        Command.JOG_STOP: JogStop(),
         Command.IS_SERVO_ENABLE: IsServoEnable(),
         Command.IS_ALL_SERVO_ENABLE: IsAllServoEnable(),
         Command.SET_SERVO_CALIBRATION: SetServoCalibration(),
@@ -706,6 +713,9 @@ class MyCobot:
         return self._emit_command(
             self.get_command(Command.JOG_COORD), coord_no, direction, speed
         )
+
+    def jog_stop(self):
+        return self._emit_command(self.get_command(Command.JOG_STOP))
 
     def is_servo_enable(self, joint_no):
         return self._emit_command(
