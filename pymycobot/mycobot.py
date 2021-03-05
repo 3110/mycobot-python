@@ -6,6 +6,7 @@ import six
 import struct
 import time
 
+ATOM_FIRMWARE_VERSION = "2.6"
 DUMP_BYTES = 8
 
 
