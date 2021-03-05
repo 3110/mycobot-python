@@ -82,9 +82,9 @@ class Axis(object):
     X = 1
     Y = 2
     Z = 3
-    Rx = 4
-    Ry = 5
-    Rz = 6
+    RX = 4
+    RY = 5
+    RZ = 6
 
 
 class CoordSystem(object):
@@ -98,8 +98,8 @@ class GripperState(object):
 
 
 class PositionType(object):
-    Angle = 0
-    Coords = 1
+    ANGLE = 0
+    COORDS = 1
 
 
 class PinMode(object):
@@ -534,11 +534,11 @@ class IsInPosition(AbstractCommandWithBoolReply):
     def prepare_data(self, data):
         data = self._flatten(super(IsInPosition, self).prepare_data(data))
         position_type = data.pop()
-        if position_type == PositionType.Angle:
+        if position_type == PositionType.ANGLE:
             return self._flatten(
                 [self.encode_int16(self._coord_to_int(v)) for v in data]
             )
-        elif position_type == PositionType.Coords:
+        elif position_type == PositionType.COORDS:
             return self._flatten(
                 [
                     self.encode_int16(
