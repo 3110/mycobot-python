@@ -797,7 +797,7 @@ class MyCobot:
         return None
 
     def _dump_row(self, row, data):
-        six.print_("%02x:" % (row * DUMP_BYTES), end=" ")
+        six.print_("%04x:" % (row * DUMP_BYTES), end=" ")
         n = len(data)
         for i in range(DUMP_BYTES):
             c = ("%02x" % data[i]) if i < n else "  "
