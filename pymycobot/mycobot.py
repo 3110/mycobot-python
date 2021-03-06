@@ -794,6 +794,10 @@ class MyCobot:
                 return cmd.parse(received)
             else:
                 raise IllegalReplyError("No reply is found")
+        else:
+            if self._serial.inWaiting() > 0:
+                received = self._serial.read(self._serial.inWaiting())
+                self._dump(received, "Unexpectedly Received:")
         return None
 
     def _dump_row(self, row, data):
