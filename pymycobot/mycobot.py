@@ -6,7 +6,6 @@ import six
 import struct
 import time
 
-ATOM_FIRMWARE_VERSION = "2.6"
 DUMP_BYTES = 8
 
 
@@ -175,17 +174,11 @@ class AbstractCommand(object):
 
     @staticmethod
     def _angle_to_int(v):
-        if ATOM_FIRMWARE_VERSION == "2.3":
-            return round(v * (math.pi * 1000 / 180))
-        else:
-            return round(v * 100)
+        return round(v * 100)
 
     @staticmethod
     def _int_to_angle(v):
-        if ATOM_FIRMWARE_VERSION == "2.3":
-            return round(v * (180 / (math.pi * 1000)))
-        else:
-            return round(v / 100.0, 3)
+        return round(v / 100.0, 3)
 
     @staticmethod
     def _coord_to_int(v):
