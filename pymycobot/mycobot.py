@@ -1,3 +1,4 @@
+from __future__ import division
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
 import math
