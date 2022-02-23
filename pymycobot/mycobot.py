@@ -1,6 +1,11 @@
 from __future__ import division
 from abc import ABCMeta, abstractmethod
-from collections import Iterable
+try:
+    # Python <= 3.9
+    from collections import Iterable
+except ImportError:
+    # Python > 3.9
+    from collections.abc import Iterable
 import math
 import serial
 import six
